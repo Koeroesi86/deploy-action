@@ -3,7 +3,7 @@
 Composite GitHub Action that deploys an **already built and tested** folder to a server over SSH.
 It does not install, build or test anything: do that in your own `build` job and hand the output over as an artifact.
 
-On the server it creates `<path>/<link>.<timestamp>/`, switches the `<path>/<link>` symlink to it atomically, and prunes old releases.
+On the server it creates `<path>/<link>.<timestamp>/`, verifies every file against a sha256 manifest (and the file count), switches the `<path>/<link>` symlink atomically, and prunes old releases. If anything fails before the switch, the partial release is removed and the live release is untouched.
 
 ## Usage
 
