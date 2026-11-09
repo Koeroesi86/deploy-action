@@ -53,6 +53,39 @@ The deploy job never rebuilds, so what ships is exactly what passed the tests.
 | `link` | `build` | Symlink name; releases are `<link>.<timestamp>` |
 | `keep` | `5` | Releases to keep, including the active one |
 | `owner` | | Optional `user:group` to chown the release to (root or passwordless sudo) |
+| `pre-activate` | | Command run on the server inside the new release before the switch; failure aborts and removes the release |
+| `health-url` | | URL checked from the runner after the switch |
+| `health-retries` | `10` | Health check attempts, 3 seconds apart |
+| `rollback-on-failure` | `true` | Re-point the symlink at the previous release when the health check fails |
+
+## Safety
+
+- A server-side `flock` (`<path>/.deploy.lock`) stops two deploys or rollbacks running at once. It is released automatically if the run dies. Add `concurrency: deploy-<project>` to your own workflow as well, so GitHub queues runs instead of failing them.
+- Every deploy and rollback appends a line (time, release, previous release, actor, commit, run URL) to `<path>/.deploy-log`.
+- A failed health check leaves the broken release on disk for debugging; pruning removes it later.
+
+## Manual rollback
+
+```yaml
+on:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: Release folder to activate (empty = previous)
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: Koeroesi86/deploy-action/rollback@v1
+        with:
+          host: ${{ vars.DEPLOY_HOST }}
+          user: ${{ vars.DEPLOY_USER }}
+          path: /var/www/donatr.eu
+          release: ${{ inputs.release }}
+          ssh-key: ${{ secrets.DEPLOY_SSH_KEY }}
+          known-hosts: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+```
 
 ## Server setup
 
@@ -60,5 +93,5 @@ Use one deploy user per project that can write only `/var/www/<project>`, with i
 
 ## Local use
 
-`deploy.sh` works on its own: `DEPLOY_TARGET=myhost DEPLOY_PATH=/var/www/app DEPLOY_SOURCE=./build ./deploy.sh`
+`deploy.sh` and `rollback.sh` work on their own: `DEPLOY_TARGET=myhost DEPLOY_PATH=/var/www/app DEPLOY_SOURCE=./build ./deploy.sh`
 (optional `DEPLOY_LINK`, `DEPLOY_KEEP`, `DEPLOY_OWNER`).

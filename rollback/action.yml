@@ -1,0 +1,51 @@
+name: Roll back an SSH deploy
+description: Points the active release symlink back at an earlier release on the server, without rebuilding.
+inputs:
+  host:
+    description: Server hostname or IP.
+    required: true
+  user:
+    description: SSH user.
+    required: true
+  path:
+    description: Remote project folder, for example /var/www/donatr.eu.
+    required: true
+  ssh-key:
+    description: Private SSH key for the deploy user.
+    required: true
+  known-hosts:
+    description: Pinned host key lines, from ssh-keyscan.
+    required: true
+  port:
+    description: SSH port.
+    default: "22"
+  link:
+    description: Name of the symlink pointing at the active release.
+    default: build
+  release:
+    description: Release folder to activate, for example build.1794236607897. Defaults to the one just before the active release.
+    default: ""
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        INPUT_HOST: ${{ inputs.host }}
+        INPUT_USER: ${{ inputs.user }}
+        INPUT_PORT: ${{ inputs.port }}
+        INPUT_KEY: ${{ inputs.ssh-key }}
+        INPUT_KNOWN_HOSTS: ${{ inputs.known-hosts }}
+      run: ${{ github.action_path }}/../ssh-setup.sh
+    - shell: bash
+      env:
+        DEPLOY_TARGET: deploy-target
+        DEPLOY_PATH: ${{ inputs.path }}
+        DEPLOY_LINK: ${{ inputs.link }}
+        DEPLOY_RELEASE: ${{ inputs.release }}
+        DEPLOY_SHA: ${{ github.sha }}
+        DEPLOY_ACTOR: ${{ github.actor }}
+        DEPLOY_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      run: ${{ github.action_path }}/../rollback.sh
+    - if: always()
+      shell: bash
+      run: rm -f ~/.ssh/deploy_key
