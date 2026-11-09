@@ -1,5 +1,5 @@
 name: Deploy built folder over SSH
-description: Uploads an already built and tested folder to a remote release directory and switches a symlink to it. It does not install, build or test anything.
+description: Uploads an already built and tested folder to a remote release directory and switches a symlink to it.
 inputs:
   host:
     description: Server hostname or IP.
