@@ -1,0 +1,2 @@
+# remote commands are intentionally built on the client side with printf %q-quoted values
+disable=SC2029

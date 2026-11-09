@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Shared helpers for deploy.sh and rollback.sh. Expects DEPLOY_TARGET, remote_path and link to be set.
+# shellcheck disable=SC2154  # remote_path and link are set by the sourcing script
 
 # Holds a server-side flock for as long as this script runs. The lock lives in a background ssh
 # session, so it is released automatically if the script or the connection dies.
