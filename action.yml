@@ -1,0 +1,69 @@
+name: Deploy built folder over SSH
+description: Uploads an already built and tested folder to a remote release directory and switches a symlink to it. It does not install, build or test anything.
+inputs:
+  host:
+    description: Server hostname or IP.
+    required: true
+  user:
+    description: SSH user.
+    required: true
+  path:
+    description: Remote project folder, for example /var/www/donatr.eu.
+    required: true
+  source:
+    description: Local folder with the built output to deploy.
+    required: true
+  ssh-key:
+    description: Private SSH key for the deploy user.
+    required: true
+  known-hosts:
+    description: Pinned host key lines, from ssh-keyscan.
+    required: true
+  port:
+    description: SSH port.
+    default: "22"
+  link:
+    description: Name of the symlink pointing at the active release. Releases are named <link>.<timestamp>.
+    default: build
+  keep:
+    description: Number of releases to keep, including the active one.
+    default: "5"
+  owner:
+    description: Optional user:group to chown the new release to (needs root or passwordless sudo).
+    default: ""
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        INPUT_HOST: ${{ inputs.host }}
+        INPUT_USER: ${{ inputs.user }}
+        INPUT_PORT: ${{ inputs.port }}
+        INPUT_KEY: ${{ inputs.ssh-key }}
+        INPUT_KNOWN_HOSTS: ${{ inputs.known-hosts }}
+      run: |
+        install -d -m 700 ~/.ssh
+        printf '%s\n' "$INPUT_KEY" > ~/.ssh/deploy_key
+        chmod 600 ~/.ssh/deploy_key
+        printf '%s\n' "$INPUT_KNOWN_HOSTS" >> ~/.ssh/known_hosts
+        cat >> ~/.ssh/config <<CONFIG
+        Host deploy-target
+          HostName $INPUT_HOST
+          User $INPUT_USER
+          Port $INPUT_PORT
+          IdentityFile ~/.ssh/deploy_key
+          IdentitiesOnly yes
+          StrictHostKeyChecking yes
+        CONFIG
+    - shell: bash
+      env:
+        DEPLOY_TARGET: deploy-target
+        DEPLOY_PATH: ${{ inputs.path }}
+        DEPLOY_SOURCE: ${{ inputs.source }}
+        DEPLOY_LINK: ${{ inputs.link }}
+        DEPLOY_KEEP: ${{ inputs.keep }}
+        DEPLOY_OWNER: ${{ inputs.owner }}
+      run: ${{ github.action_path }}/deploy.sh
+    - if: always()
+      shell: bash
+      run: rm -f ~/.ssh/deploy_key
